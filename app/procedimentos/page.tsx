@@ -35,6 +35,11 @@ export default function ProcedimentosPage() {
   const [cancelarProcId, setCancelarProcId] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
+  // Estados para desconto no modal de edição
+  const [editDescontoAtivo, setEditDescontoAtivo] = useState(false)
+  const [editDescontoTipo, setEditDescontoTipo] = useState<'pct' | 'valor'>('pct')
+  const [editDescontoVal, setEditDescontoVal] = useState(0)
+
   // Form novo procedimento
   const [clienteId, setClienteId] = useState('')
   const [tipo, setTipo] = useState<'servico' | 'pacote'>('servico')
@@ -206,14 +211,22 @@ export default function ProcedimentosPage() {
     if (!editProc) return
     setSalvando(true)
 
+    const descPct = editDescontoAtivo && editDescontoTipo === 'pct' ? editDescontoVal : 0
+    const descValor = editDescontoAtivo && editDescontoTipo === 'valor' ? editDescontoVal : 0
+    const novoValorFinal = editDescontoAtivo
+      ? editDescontoTipo === 'pct'
+        ? editProc.valor_original - editProc.valor_original * editDescontoVal / 100
+        : editProc.valor_original - editDescontoVal
+      : editProc.valor_original
+
     // Se status mudou para 'pago', gera lançamento financeiro
     const mudouParaPago = editProcStatusOriginal !== 'pago' && editProc.status_pagamento === 'pago'
     const mudouDePago = editProcStatusOriginal === 'pago' && editProc.status_pagamento !== 'pago'
 
     await supabase.from('procedimentos').update({
-      desconto_pct: editProc.desconto_pct,
-      desconto_valor: editProc.desconto_valor,
-      valor_final: editProc.valor_final,
+      desconto_pct: descPct,
+      desconto_valor: descValor,
+      valor_final: novoValorFinal,
       status_pagamento: editProc.status_pagamento,
       forma_pagamento: editProc.forma_pagamento,
       observacoes: editProc.observacoes,
@@ -225,7 +238,7 @@ export default function ProcedimentosPage() {
         data: hoje(),
         tipo: 'entrada',
         descricao: `Procedimento #${editProc.numero} — ${editProc.item_nome} — ${editProc.cliente_nome}`,
-        valor: editProc.valor_final,
+        valor: novoValorFinal,
         conta: 'cnpj',
         categoria: 'Procedimento',
         procedimento_id: editProc.id,
@@ -247,6 +260,13 @@ export default function ProcedimentosPage() {
   function abrirEdicao(p: Procedimento) {
     setEditProc(p)
     setEditProcStatusOriginal(p.status_pagamento)
+    if (p.desconto_pct > 0) {
+      setEditDescontoAtivo(true); setEditDescontoTipo('pct'); setEditDescontoVal(p.desconto_pct)
+    } else if (p.desconto_valor > 0) {
+      setEditDescontoAtivo(true); setEditDescontoTipo('valor'); setEditDescontoVal(p.desconto_valor)
+    } else {
+      setEditDescontoAtivo(false); setEditDescontoTipo('pct'); setEditDescontoVal(0)
+    }
   }
 
   function resetForm() {
@@ -305,7 +325,17 @@ export default function ProcedimentosPage() {
                 </div>
                 <p className="mt-2 text-xs text-gray-500 truncate">{p.item_nome}</p>
                 <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-900">{formatarMoeda(p.valor_final)}</span>
+                  <div>
+                    {(p.desconto_pct > 0 || p.desconto_valor > 0) && (
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <span className="line-through">{formatarMoeda(p.valor_original)}</span>
+                        <span className="text-green-600 font-medium">
+                          -{p.desconto_pct > 0 ? `${p.desconto_pct}%` : formatarMoeda(p.desconto_valor)}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-sm font-bold text-gray-900">{formatarMoeda(p.valor_final)}</span>
+                  </div>
                   {badgeStatus(p.status_pagamento)}
                 </div>
               </CardContent>
@@ -419,8 +449,40 @@ export default function ProcedimentosPage() {
             <DialogHeader><DialogTitle>Editar #{editProc.numero} — {editProc.cliente_nome}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
+                <Label>Valor original</Label>
+                <p className="text-sm font-medium text-gray-700">{formatarMoeda(editProc.valor_original)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={editDescontoAtivo} onCheckedChange={setEditDescontoAtivo} />
+                <Label>Aplicar desconto</Label>
+              </div>
+              {editDescontoAtivo && (
+                <div className="space-y-2">
+                  <div className="flex rounded-lg border bg-gray-50 p-0.5">
+                    {(['pct', 'valor'] as const).map(t => (
+                      <button key={t} onClick={() => { setEditDescontoTipo(t); setEditDescontoVal(0) }}
+                        className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${editDescontoTipo === t ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500'}`}>
+                        {t === 'pct' ? '%' : 'R$'}
+                      </button>
+                    ))}
+                  </div>
+                  {editDescontoTipo === 'pct'
+                    ? <Input type="number" value={editDescontoVal} onChange={e => setEditDescontoVal(+e.target.value)} placeholder="Ex: 10" />
+                    : <CurrencyInput value={editDescontoVal} onChange={setEditDescontoVal} />
+                  }
+                </div>
+              )}
+              <div className="space-y-1">
                 <Label>Valor final</Label>
-                <CurrencyInput value={editProc.valor_final} onChange={v => setEditProc({ ...editProc, valor_final: v })} />
+                <p className="text-sm font-bold text-purple-700">
+                  {formatarMoeda(
+                    editDescontoAtivo
+                      ? editDescontoTipo === 'pct'
+                        ? editProc.valor_original - editProc.valor_original * editDescontoVal / 100
+                        : editProc.valor_original - editDescontoVal
+                      : editProc.valor_original
+                  )}
+                </p>
               </div>
               <div className="space-y-1">
                 <Label>Status pagamento</Label>

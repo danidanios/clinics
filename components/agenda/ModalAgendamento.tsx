@@ -127,13 +127,22 @@ export function ModalAgendamento({
       setStatusPag('pendente')
       setStatusPagOriginal('pendente')
       if (sessao.procedimento_id) {
-        supabase.from('procedimentos').select('status_pagamento,valor_final')
+        supabase.from('procedimentos')
+          .select('status_pagamento,valor_final,desconto_pct,desconto_valor,valor_original')
           .eq('id', sessao.procedimento_id).single()
           .then(({ data: proc }) => {
             if (proc) {
               setStatusPag(proc.status_pagamento)
               setStatusPagOriginal(proc.status_pagamento)
               setValorProcedimento(proc.valor_final || 0)
+              setValor(proc.valor_original || proc.valor_final || 0)
+              if (proc.desconto_pct > 0) {
+                setDescontoAtivo(true); setDescontoTipo('pct'); setDescontoValor(proc.desconto_pct)
+              } else if (proc.desconto_valor > 0) {
+                setDescontoAtivo(true); setDescontoTipo('valor'); setDescontoValor(proc.desconto_valor)
+              } else {
+                setDescontoAtivo(false); setDescontoValor(0)
+              }
             }
           })
       }
@@ -359,7 +368,14 @@ export function ModalAgendamento({
         return
       }
 
-      // Propaga mudança de status de pagamento ao procedimento e gera/cancela lançamento
+      // Propaga desconto e status de pagamento ao procedimento
+      if (sessao.procedimento_id) {
+        await supabase.from('procedimentos').update({
+          desconto_pct: descontoAtivo && descontoTipo === 'pct' ? descontoValor : 0,
+          desconto_valor: descontoAtivo && descontoTipo === 'valor' ? descontoValor : 0,
+          valor_final: valorFinal,
+        }).eq('id', sessao.procedimento_id)
+      }
       if (sessao.procedimento_id && statusPag !== statusPagOriginal) {
         await supabase.from('procedimentos').update({ status_pagamento: statusPag }).eq('id', sessao.procedimento_id)
         if (statusPag === 'pago') {
@@ -445,7 +461,7 @@ export function ModalAgendamento({
         status: i === 0 ? 'agendada' : 'pendente',
         comissao_pct: comissaoPct,
         comissao_valor: 0,
-        custo_produto: custoProd,
+        custo_produto: n > 1 ? custoProd / n : custoProd,
         numero_sessao: i + 1,
         total_sessoes: n,
       }))
