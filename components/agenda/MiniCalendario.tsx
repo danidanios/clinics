@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Funcionaria } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,14 @@ export function MiniCalendario({
   onToggleFuncionaria,
 }: Props) {
   const [mesRef, setMesRef] = useState(() => dataBase.substring(0, 7))
+  // Ordem local das funcionárias (permite arrastar para reordenar)
+  const [ordemFuncionarias, setOrdemFuncionarias] = useState<Funcionaria[]>(funcionarias)
+  const dragIndex = useRef<number | null>(null)
+
+  // Sincroniza quando a prop funcionarias mudar (ex: carregamento inicial)
+  useEffect(() => {
+    setOrdemFuncionarias(funcionarias)
+  }, [funcionarias])
 
   const ano = parseInt(mesRef.substring(0, 4))
   const mes = parseInt(mesRef.substring(5, 7)) - 1
@@ -103,18 +111,31 @@ export function MiniCalendario({
       {/* Separador */}
       <div className="border-t mx-2" />
 
-      {/* Lista de funcionárias com checkboxes */}
+      {/* Lista de funcionárias com checkboxes (arrastar para reordenar) */}
       <div className="px-3 py-2 space-y-1.5">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
           Funcionárias
         </p>
-        {funcionarias.map((f, idx) => {
+        {ordemFuncionarias.map((f, idx) => {
           const cor = corFuncionaria(idx)
           const visivel = funcionariasVisiveis.has(f.id)
           return (
             <label
               key={f.id}
-              className="flex items-center gap-2 cursor-pointer group"
+              draggable
+              onDragStart={() => { dragIndex.current = idx }}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => {
+                const from = dragIndex.current
+                if (from === null || from === idx) return
+                const nova = [...ordemFuncionarias]
+                const [item] = nova.splice(from, 1)
+                nova.splice(idx, 0, item)
+                setOrdemFuncionarias(nova)
+                dragIndex.current = null
+              }}
+              onDragEnd={() => { dragIndex.current = null }}
+              className="flex items-center gap-2 cursor-grab active:cursor-grabbing group"
             >
               <input
                 type="checkbox"

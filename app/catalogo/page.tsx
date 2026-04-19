@@ -31,6 +31,7 @@ export default function CatalogoPage() {
   const [editServico, setEditServico] = useState<Servico | null>(null)
   const [snome, setSnome] = useState('')
   const [sduracao, setSduracao] = useState(30)
+  const [sPreco, setSpreco] = useState(0)
   const [scustos, setScustos] = useState<ItemCusto[]>([])
 
   // Modal pacote
@@ -60,7 +61,7 @@ export default function CatalogoPage() {
 
   // --- Serviços ---
   function abrirNovoServico() {
-    setEditServico(null); setSnome(''); setSduracao(30); setScustos([])
+    setEditServico(null); setSnome(''); setSduracao(30); setSpreco(0); setScustos([])
     setModalServico(true)
   }
 
@@ -68,6 +69,7 @@ export default function CatalogoPage() {
     setEditServico(s)
     setSnome(s.nome)
     setSduracao(s.duracao_minutos ?? 30)
+    setSpreco(s.preco ?? 0)
     // Se houver custos detalhados, usa-os; senão inicializa com o custo geral salvo
     const custos = s.custos_detalhados?.length > 0
       ? s.custos_detalhados
@@ -88,7 +90,7 @@ export default function CatalogoPage() {
   async function salvarServico() {
     if (!snome.trim()) { toast.error('Informe o nome do serviço.'); return }
     setSalvando(true)
-    const payload = { nome: snome, custo_geral: custoGeral, custos_detalhados: scustos, duracao_minutos: sduracao }
+    const payload = { nome: snome, custo_geral: custoGeral, custos_detalhados: scustos, duracao_minutos: sduracao, preco: sPreco }
     if (editServico) {
       await supabase.from('servicos').update(payload).eq('id', editServico.id)
     } else {
@@ -170,6 +172,7 @@ export default function CatalogoPage() {
                       <p className="text-sm font-medium">{s.nome}</p>
                       <p className="text-xs text-gray-400">
                         Custo: {formatarMoeda(s.custo_geral)}
+                        {s.preco ? ` · Preço: ${formatarMoeda(s.preco)}` : ''}
                         {s.duracao_minutos ? ` · ${s.duracao_minutos} min` : ''}
                       </p>
                     </div>
@@ -238,16 +241,18 @@ export default function CatalogoPage() {
               <Input value={snome} onChange={e => setSnome(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Duração</Label>
-              <select
+              <Label>Duração (minutos)</Label>
+              <Input
+                type="number"
+                min={1}
                 value={sduracao}
                 onChange={e => setSduracao(+e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-              >
-                {[15, 30, 45, 60, 90, 120].map(m => (
-                  <option key={m} value={m}>{m} min</option>
-                ))}
-              </select>
+                placeholder="Ex: 45"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Preço de venda</Label>
+              <CurrencyInput value={sPreco} onChange={setSpreco} />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">

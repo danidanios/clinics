@@ -43,6 +43,7 @@ export type Servico = {
   custo_geral: number
   custos_detalhados: { descricao: string; fornecedor: string; valor: number }[]
   duracao_minutos?: number
+  preco?: number
   criado_em?: string
 }
 
