@@ -96,6 +96,7 @@ export function ModalAgendamento({
   const [salvando, setSalvando] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [statusPagOriginal, setStatusPagOriginal] = useState('pendente')
+  const [valorProcedimento, setValorProcedimento] = useState(0)
 
   const clientesFiltrados = clientes.filter(
     (c) => !buscaCliente || c.nome.toLowerCase().includes(buscaCliente.toLowerCase()),
@@ -132,6 +133,7 @@ export function ModalAgendamento({
             if (proc) {
               setStatusPag(proc.status_pagamento)
               setStatusPagOriginal(proc.status_pagamento)
+              setValorProcedimento(proc.valor_final || 0)
             }
           })
       }
@@ -364,7 +366,7 @@ export function ModalAgendamento({
           await supabase.from('lancamentos').insert({
             id: gerarId(), data: hoje(), tipo: 'entrada',
             descricao: `Procedimento #${sessao.procedimento_numero} — ${sessao.item_nome} — ${sessao.cliente_nome}`,
-            valor: valorFinal || sessao.valor_servico,
+            valor: valorProcedimento || valorFinal || sessao.valor_servico,
             conta: 'cnpj', categoria: 'Procedimento',
             procedimento_id: sessao.procedimento_id, cancelado: false,
           })
@@ -717,6 +719,7 @@ function FormAgendamento(p: FormAgendamentoProps) {
           <Input
             placeholder="Buscar cliente..."
             value={p.buscaCliente}
+            disabled={p.ehSessaoPendente}
             onChange={(e) => { p.setBuscaCliente(e.target.value); p.setClienteId(''); setClienteDropAberto(true) }}
             onFocus={() => setClienteDropAberto(true)}
             onBlur={() => setTimeout(() => setClienteDropAberto(false), 150)}
@@ -829,14 +832,13 @@ function FormAgendamento(p: FormAgendamentoProps) {
         </div>
       </div>
 
-      {/* Preço */}
-      <div className="space-y-1">
-        <Label>Preço</Label>
-        <CurrencyInput value={p.valor} onChange={p.setValor} disabled={p.ehSessaoPendente} />
-        {p.ehSessaoPendente && (
-          <p className="text-xs text-gray-400">Pagamento já registrado no pacote</p>
-        )}
-      </div>
+      {/* Preço — oculto para sessões pendentes de pacote */}
+      {!p.ehSessaoPendente && (
+        <div className="space-y-1">
+          <Label>Preço</Label>
+          <CurrencyInput value={p.valor} onChange={p.setValor} />
+        </div>
+      )}
 
       {!p.ehSessaoPendente && (
         <>
@@ -919,12 +921,14 @@ function FormAgendamento(p: FormAgendamentoProps) {
         <CurrencyInput value={p.custoProd} onChange={p.setCustoProd} disabled={p.custoLock} />
       </div>
 
-      {/* Observações */}
-      <div className="space-y-1">
-        <Label>Observações</Label>
-        <textarea className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring resize-none"
-          rows={2} value={p.obs} onChange={(e) => p.setObs(e.target.value)} placeholder="Observações opcionais..." />
-      </div>
+      {/* Observações — oculto para sessões pendentes de pacote */}
+      {!p.ehSessaoPendente && (
+        <div className="space-y-1">
+          <Label>Observações</Label>
+          <textarea className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring resize-none"
+            rows={2} value={p.obs} onChange={(e) => p.setObs(e.target.value)} placeholder="Observações opcionais..." />
+        </div>
+      )}
 
       {/* Marcar como realizado */}
       <label className="flex items-center gap-2 cursor-pointer">

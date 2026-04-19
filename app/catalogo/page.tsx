@@ -263,7 +263,7 @@ export default function CatalogoPage() {
                 <div key={i} className="grid grid-cols-[1fr_1fr_80px_24px] gap-1 items-center">
                   <Input className="h-7 text-xs" placeholder="Descrição" value={c.descricao} onChange={e => setCusto(i, 'descricao', e.target.value)} />
                   <Input className="h-7 text-xs" placeholder="Fornecedor" value={c.fornecedor} onChange={e => setCusto(i, 'fornecedor', e.target.value)} />
-                  <Input className="h-7 text-xs" type="number" placeholder="R$" value={c.valor} onChange={e => setCusto(i, 'valor', +e.target.value)} />
+                  <CurrencyInput className="h-7 text-xs" value={c.valor} onChange={v => setCusto(i, 'valor', v)} />
                   <button onClick={() => removerCusto(i)} className="text-red-400 hover:text-red-600"><Trash2 size={12} /></button>
                 </div>
               ))}
