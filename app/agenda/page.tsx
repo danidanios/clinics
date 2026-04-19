@@ -14,16 +14,20 @@ import { MESES_PT } from '@/components/agenda/constants'
 
 type View = 'dia' | 'semana' | 'mes'
 
+function dataISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function adicionarDias(data: string, n: number): string {
   const d = new Date(data + 'T00:00:00')
   d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
+  return dataISO(d)
 }
 
 function inicioSemana(data: string): string {
   const d = new Date(data + 'T00:00:00')
   d.setDate(d.getDate() - d.getDay())
-  return d.toISOString().split('T')[0]
+  return dataISO(d)
 }
 
 function labelData(view: View, dataBase: string): string {
@@ -126,7 +130,7 @@ export default function AgendaPage() {
     else {
       const d = new Date(dataBase + 'T00:00:00')
       d.setMonth(d.getMonth() + delta)
-      setDataBase(d.toISOString().split('T')[0])
+      setDataBase(dataISO(d))
     }
   }
 

@@ -30,7 +30,8 @@ function periodoRange(p: Periodo, ini?: string, fim?: string): { de: string; ate
   if (p === 'semana') {
     const d = new Date()
     d.setDate(d.getDate() - d.getDay())
-    return { de: d.toISOString().split('T')[0], ate: hj }
+    const iso = (x: Date) => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`
+    return { de: iso(d), ate: hj }
   }
   if (p === 'mes') return { de: hj.substring(0, 7) + '-01', ate: hj }
   return { de: ini || hj, ate: fim || hj }

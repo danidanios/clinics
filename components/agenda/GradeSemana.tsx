@@ -16,16 +16,20 @@ type Props = {
   onSessaoClick: (sessao: Sessao) => void
 }
 
+function dataISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
 function adicionarDias(data: string, n: number): string {
   const d = new Date(data + 'T00:00:00')
   d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
+  return dataISO(d)
 }
 
 function inicioSemana(data: string): string {
   const d = new Date(data + 'T00:00:00')
   d.setDate(d.getDate() - d.getDay())
-  return d.toISOString().split('T')[0]
+  return dataISO(d)
 }
 
 const DIAS_ABREV = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']

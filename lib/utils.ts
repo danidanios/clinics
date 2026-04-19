@@ -47,9 +47,10 @@ export function formatarNumero(n: number): string {
   return String(n).padStart(4, '0')
 }
 
-// Data de hoje em ISO (yyyy-mm-dd)
+// Data de hoje em ISO (yyyy-mm-dd) — usa data local, não UTC
 export function hoje(): string {
-  return new Date().toISOString().split('T')[0]
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 // Paleta de cores das funcionárias — mesma usada na agenda e em todo o sistema
