@@ -445,7 +445,7 @@ export function ModalAgendamento({
         status: i === 0 ? 'agendada' : 'pendente',
         comissao_pct: comissaoPct,
         comissao_valor: 0,
-        custo_produto: custoProd,
+        custo_produto: n > 1 ? custoProd / n : custoProd,
         numero_sessao: i + 1,
         total_sessoes: n,
       }))
