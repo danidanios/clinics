@@ -202,7 +202,7 @@ export function ModalAgendamento({
       const dur = serv?.duracao_minutos ?? 30
       setDuracaoSessao(dur)
       if (horaInicio) setHoraFim(adicionarMinutos(horaInicio, dur))
-      setValor(0)
+      setValor(serv?.preco ?? 0)
     } else {
       const pac = pacotes.find((p) => p.id === iId)
       setValor(pac?.preco_total ?? 0)
