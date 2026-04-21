@@ -705,6 +705,10 @@ type FormAgendamentoProps = {
 
 function FormAgendamento(p: FormAgendamentoProps) {
   const [clienteDropAberto, setClienteDropAberto] = useState(false)
+  const [buscaItem, setBuscaItem] = useState('')
+  const [itemDropAberto, setItemDropAberto] = useState(false)
+
+  useEffect(() => { setBuscaItem('') }, [p.tipoItem])
 
   return (
     <div className="space-y-3">
@@ -757,24 +761,48 @@ function FormAgendamento(p: FormAgendamentoProps) {
       {!p.ehSessaoPendente && (
         <div className="space-y-1">
           <Label>{p.tipoItem === 'servico' ? 'Serviço' : 'Pacote'}</Label>
-          <Select value={p.itemId} onValueChange={(v) => p.setItemId(v ?? '')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Selecione...">
+          <div className="relative">
+            <Input
+              placeholder={`Buscar ${p.tipoItem === 'servico' ? 'serviço' : 'pacote'}...`}
+              value={buscaItem}
+              onChange={(e) => { setBuscaItem(e.target.value); p.setItemId(''); setItemDropAberto(true) }}
+              onFocus={() => setItemDropAberto(true)}
+              onBlur={() => setTimeout(() => setItemDropAberto(false), 150)}
+            />
+            {itemDropAberto && (
+              <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md">
                 {p.tipoItem === 'servico'
-                  ? p.servicos.find((s) => s.id === p.itemId)?.nome
-                  : (() => { const pac = p.pacotes.find((p2) => p2.id === p.itemId); return pac ? `${pac.nome} — ${pac.num_sessoes} sessões — ${formatarMoeda(pac.preco_total)}` : undefined })()}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {p.tipoItem === 'servico'
-                ? p.servicos.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)
-                : p.pacotes.map((pac) => (
-                    <SelectItem key={pac.id} value={pac.id}>
-                      {pac.nome} — {pac.num_sessoes} sessões — {formatarMoeda(pac.preco_total)}
-                    </SelectItem>
-                  ))}
-            </SelectContent>
-          </Select>
+                  ? p.servicos
+                      .filter((s) => !buscaItem || s.nome.toLowerCase().includes(buscaItem.toLowerCase()))
+                      .slice(0, 30)
+                      .map((s) => (
+                        <button
+                          key={s.id}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                          onMouseDown={() => { p.setItemId(s.id); setBuscaItem(s.nome); setItemDropAberto(false) }}
+                        >
+                          {s.nome}
+                        </button>
+                      ))
+                  : p.pacotes
+                      .filter((pac) => !buscaItem || pac.nome.toLowerCase().includes(buscaItem.toLowerCase()))
+                      .slice(0, 30)
+                      .map((pac) => (
+                        <button
+                          key={pac.id}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                          onMouseDown={() => {
+                            p.setItemId(pac.id)
+                            setBuscaItem(`${pac.nome} — ${pac.num_sessoes} sessões — ${formatarMoeda(pac.preco_total)}`)
+                            setItemDropAberto(false)
+                          }}
+                        >
+                          {pac.nome} — {pac.num_sessoes} sessões — {formatarMoeda(pac.preco_total)}
+                        </button>
+                      ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
