@@ -247,6 +247,7 @@ export default function CatalogoPage() {
                 min={1}
                 value={sduracao}
                 onChange={e => setSduracao(+e.target.value)}
+                onFocus={e => e.target.select()}
                 placeholder="Ex: 45"
               />
             </div>
