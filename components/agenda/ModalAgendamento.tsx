@@ -124,6 +124,9 @@ export function ModalAgendamento({
       setRealizado(sessao.status === 'realizada')
       setNumProc(sessao.procedimento_numero || '')
       setLembResponsavelId(sessao.responsavel_id || '')
+      setDescontoAtivo(false)
+      setDescontoValor(0)
+      setDescontoTipo('pct')
       setStatusPag('pendente')
       setStatusPagOriginal('pendente')
       if (sessao.procedimento_id) {
