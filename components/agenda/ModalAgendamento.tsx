@@ -199,7 +199,8 @@ export function ModalAgendamento({
     if (iTipo === 'servico') {
       const serv = servicos.find((s) => s.id === iId)
       setCustoProd(serv?.custo_geral ?? 0)
-      const dur = serv?.duracao_minutos ?? 30
+      // Fallback para 30 min quando o serviço não tem duração cadastrada (null, undefined ou 0)
+      const dur = serv?.duracao_minutos && serv.duracao_minutos > 0 ? serv.duracao_minutos : 30
       setDuracaoSessao(dur)
       if (horaInicio) setHoraFim(adicionarMinutos(horaInicio, dur))
       setValor(serv?.preco ?? 0)
@@ -214,6 +215,8 @@ export function ModalAgendamento({
         setCustoProd(0)
       }
       setDuracaoSessao(30)
+      // Recalcula hora fim ao trocar de serviço para pacote (duração padrão de 30 min)
+      if (horaInicio) setHoraFim(adicionarMinutos(horaInicio, 30))
     }
   }
 

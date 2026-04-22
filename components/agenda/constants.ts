@@ -56,6 +56,12 @@ export function adicionarMinutos(hora: string, minutos: number): string {
 // Nomes dos dias da semana abreviados em português
 export const DIAS_SEMANA_ABREV = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
+// Nomes dos dias da semana por extenso em português
+export const DIAS_SEMANA_EXT = [
+  'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
+  'Quinta-feira', 'Sexta-feira', 'Sábado',
+]
+
 // Nomes dos meses em português
 export const MESES_PT = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

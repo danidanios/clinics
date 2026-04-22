@@ -10,7 +10,7 @@ import { GradeSemana } from '@/components/agenda/GradeSemana'
 import { GradeMes } from '@/components/agenda/GradeMes'
 import { ModalAgendamento } from '@/components/agenda/ModalAgendamento'
 import { PainelSessoesPendentes } from '@/components/agenda/PainelSessoesPendentes'
-import { MESES_PT } from '@/components/agenda/constants'
+import { MESES_PT, DIAS_SEMANA_EXT } from '@/components/agenda/constants'
 
 type View = 'dia' | 'semana' | 'mes'
 
@@ -33,7 +33,8 @@ function inicioSemana(data: string): string {
 function labelData(view: View, dataBase: string): string {
   if (view === 'dia') {
     const d = new Date(dataBase + 'T00:00:00')
-    return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+    const dataFormatada = d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })
+    return `${dataFormatada} — ${DIAS_SEMANA_EXT[d.getDay()]}`
   }
   if (view === 'semana') {
     const ini = inicioSemana(dataBase)

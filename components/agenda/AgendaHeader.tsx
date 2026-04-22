@@ -61,14 +61,14 @@ export function AgendaHeader({ view, labelData, onViewChange, onNavegar, onHoje,
 
       {/* Centro: navegação de data */}
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" className="h-8" onClick={onHoje}>Hoje</Button>
+        <Button size="sm" variant="outline" className="h-8 mr-4" onClick={onHoje}>Hoje</Button>
         <button onClick={() => onNavegar(-1)} className="rounded-full p-1 hover:bg-gray-100 transition-colors">
           <ChevronLeft size={18} />
         </button>
         <button onClick={() => onNavegar(1)} className="rounded-full p-1 hover:bg-gray-100 transition-colors">
           <ChevronRight size={18} />
         </button>
-        <span className="min-w-48 text-center text-base font-medium text-gray-800">{labelData}</span>
+        <span className="min-w-[22rem] text-center text-base font-medium text-gray-800">{labelData}</span>
       </div>
 
       {/* Lado direito: seletor de view */}

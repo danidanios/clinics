@@ -125,7 +125,7 @@ export function GradeSemana({
                     className={
                       i % 2 === 0
                         ? 'absolute inset-x-0 border-t border-gray-200'
-                        : 'absolute inset-x-0 border-t border-dashed border-gray-100'
+                        : 'absolute inset-x-0 border-t border-dashed border-gray-200'
                     }
                     style={{ top: i * ALTURA_SLOT }}
                   />
