@@ -13,7 +13,7 @@ import { gerarId, formatarMoeda, formatarNumero, hoje } from '@/lib/utils'
 import { Trash2 } from 'lucide-react'
 import { calcularComissao } from '@/lib/comissao'
 import { toast } from 'sonner'
-import { SLOTS_MODAL, adicionarMinutos, corFuncionaria } from './constants'
+import { SLOTS_MODAL, adicionarMinutos, corFuncionaria, proximoSlot } from './constants'
 import { cn } from '@/lib/utils'
 
 type TipoModal = 'agendamento' | 'bloqueio' | 'lembrete'
@@ -196,13 +196,18 @@ export function ModalAgendamento({
     const func = funcionarias.find((f) => f.id === fId)
     setComissaoPct(sf?.comissao_pct ?? func?.comissao_pct ?? 0)
 
+    // Se abrir o modal sem slot clicado ("+ Criar"), preenche Hora início com o próximo slot
+    // disponível para que Hora fim possa ser calculada a partir da duração do serviço.
+    const inicio = horaInicio || proximoSlot(data || hoje(), hoje())
+    if (!horaInicio) setHoraInicio(inicio)
+
     if (iTipo === 'servico') {
       const serv = servicos.find((s) => s.id === iId)
       setCustoProd(serv?.custo_geral ?? 0)
       // Fallback para 30 min quando o serviço não tem duração cadastrada (null, undefined ou 0)
       const dur = serv?.duracao_minutos && serv.duracao_minutos > 0 ? serv.duracao_minutos : 30
       setDuracaoSessao(dur)
-      if (horaInicio) setHoraFim(adicionarMinutos(horaInicio, dur))
+      setHoraFim(adicionarMinutos(inicio, dur))
       setValor(serv?.preco ?? 0)
     } else {
       const pac = pacotes.find((p) => p.id === iId)
@@ -215,8 +220,8 @@ export function ModalAgendamento({
         setCustoProd(0)
       }
       setDuracaoSessao(30)
-      // Recalcula hora fim ao trocar de serviço para pacote (duração padrão de 30 min)
-      if (horaInicio) setHoraFim(adicionarMinutos(horaInicio, 30))
+      // Duração padrão de 30 min para pacotes
+      setHoraFim(adicionarMinutos(inicio, 30))
     }
   }
 

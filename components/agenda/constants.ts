@@ -53,6 +53,29 @@ export function adicionarMinutos(hora: string, minutos: number): string {
   return `${String(novaH).padStart(2, '0')}:${String(novaM).padStart(2, '0')}`
 }
 
+// Retorna o próximo slot disponível de 30 min como default para Hora início
+// quando não há slot clicado. Se a data for hoje, arredonda o horário atual para
+// o próximo slot; caso contrário começa em 08:00. Sempre dentro de 08:00–22:00.
+export function proximoSlot(dataAlvo: string, dataHoje: string): string {
+  if (dataAlvo === dataHoje) {
+    const agora = new Date()
+    let h = agora.getHours()
+    let m = agora.getMinutes()
+    if (m === 0) {
+      // mantém
+    } else if (m <= 30) {
+      m = 30
+    } else {
+      h += 1
+      m = 0
+    }
+    if (h < 8) { h = 8; m = 0 }
+    if (h > 22 || (h === 22 && m > 0)) { h = 22; m = 0 }
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+  return '08:00'
+}
+
 // Nomes dos dias da semana abreviados em português
 export const DIAS_SEMANA_ABREV = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
