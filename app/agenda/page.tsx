@@ -178,6 +178,7 @@ export default function AgendaPage() {
     setPreData(undefined)
     setPreHora(undefined)
     setPreFuncId(undefined)
+    setPainelAberto(false)
     setModalAberto(true)
   }
 
@@ -220,53 +221,47 @@ export default function AgendaPage() {
           />
         </div>
 
-        {/* Grade principal + painel lateral de pendentes */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            {view === 'dia' && (
-              <GradeDia
-                data={dataBase}
-                sessoes={sessoes}
-                funcionarias={funcionarias}
-                funcionariasVisiveis={funcionariasVisiveis}
-                onSlotClick={handleSlotClick}
-                onSessaoClick={handleSessaoClick}
-              />
-            )}
-            {view === 'semana' && (
-              <GradeSemana
-                dataBase={dataBase}
-                sessoes={sessoes}
-                funcionarias={funcionarias}
-                onSlotClick={(data, hora) => handleSlotClick(data, hora)}
-                onSessaoClick={handleSessaoClick}
-              />
-            )}
-            {view === 'mes' && (
-              <GradeMes
-                dataBase={dataBase}
-                sessoes={sessoes}
-                funcionarias={funcionarias}
-                onDiaClick={handleDiaClick}
-                onSessaoClick={handleSessaoClick}
-              />
-            )}
-          </div>
-
-          {/* Painel de sessões a agendar */}
-          <PainelSessoesPendentes
-            aberto={painelAberto}
-            onFechar={() => setPainelAberto(false)}
-            onAgendar={handleAgendarPendente}
-            versao={versaoPainel}
-            onContarPendentes={(n) => {
-              setSessoesPendentes(n)
-              // Abre automaticamente se houver pendentes ao carregar
-              if (n > 0 && versaoPainel === 0) setPainelAberto(true)
-            }}
-          />
+        {/* Grade principal ocupa toda a largura; painel de pendentes é overlay */}
+        <div className="flex-1 overflow-hidden">
+          {view === 'dia' && (
+            <GradeDia
+              data={dataBase}
+              sessoes={sessoes}
+              funcionarias={funcionarias}
+              funcionariasVisiveis={funcionariasVisiveis}
+              onSlotClick={handleSlotClick}
+              onSessaoClick={handleSessaoClick}
+            />
+          )}
+          {view === 'semana' && (
+            <GradeSemana
+              dataBase={dataBase}
+              sessoes={sessoes}
+              funcionarias={funcionarias}
+              onSlotClick={(data, hora) => handleSlotClick(data, hora)}
+              onSessaoClick={handleSessaoClick}
+            />
+          )}
+          {view === 'mes' && (
+            <GradeMes
+              dataBase={dataBase}
+              sessoes={sessoes}
+              funcionarias={funcionarias}
+              onDiaClick={handleDiaClick}
+              onSessaoClick={handleSessaoClick}
+            />
+          )}
         </div>
       </div>
+
+      {/* Painel de sessões a agendar (drawer sobreposto) */}
+      <PainelSessoesPendentes
+        aberto={painelAberto}
+        onFechar={() => setPainelAberto(false)}
+        onAgendar={handleAgendarPendente}
+        versao={versaoPainel}
+        onContarPendentes={setSessoesPendentes}
+      />
 
       {/* Modal de agendamento / edição */}
       <ModalAgendamento
