@@ -47,6 +47,9 @@ export default function ProcedimentosPage() {
   const [formaPag, setFormaPag] = useState<FormaPag>('pix')
   const [parcelas, setParcelas] = useState(1)
   const [obs, setObs] = useState('')
+  // Pacote retroativo: cliente já iniciou o pacote antes do sistema
+  const [pacoteRetroativo, setPacoteRetroativo] = useState(false)
+  const [sessoesJaRealizadas, setSessoesJaRealizadas] = useState(1)
 
   const carregar = useCallback(async () => {
     // Filtra procedimentos não cancelados
@@ -139,7 +142,9 @@ export default function ProcedimentosPage() {
         valor_servico: valorFinal / numSessoes,
         data: null,
         hora: null,
-        status: 'pendente',
+        // Pacote retroativo: primeiras X sessões ficam como realizadas (histórico),
+        // restantes ficam pendentes para serem agendadas normalmente
+        status: (pacoteRetroativo && i < sessoesJaRealizadas) ? 'realizada' : 'pendente',
         comissao_pct: 0,
         comissao_valor: 0,
         custo_produto: 0,
@@ -165,7 +170,15 @@ export default function ProcedimentosPage() {
       })
     }
 
-    toast.success(`Procedimento #${numero} — ${cliente?.nome} registrado!`)
+    if (pacoteRetroativo && tipo === 'pacote') {
+      const n = pacotes.find(p => p.id === itemId)?.num_sessoes || 0
+      const pendentes = Math.max(0, n - sessoesJaRealizadas)
+      toast.success(
+        `Procedimento #${numero} registrado: ${sessoesJaRealizadas} realizada(s), ${pendentes} pendente(s).`,
+      )
+    } else {
+      toast.success(`Procedimento #${numero} — ${cliente?.nome} registrado!`)
+    }
     setModalAberto(false)
     resetForm()
     setSalvando(false)
@@ -253,6 +266,7 @@ export default function ProcedimentosPage() {
     setClienteId(''); setItemId(''); setValorOriginal(0); setComDesconto(false)
     setDescontoVal(0); setFormaPag('pix'); setParcelas(1); setObs('')
     setTipo('servico')
+    setPacoteRetroativo(false); setSessoesJaRealizadas(1)
   }
 
   const filtrados = procedimentos.filter(p =>
@@ -361,6 +375,35 @@ export default function ProcedimentosPage() {
               <Label>Valor</Label>
               <CurrencyInput value={valorOriginal} onChange={v => setValorOriginal(v)} disabled={tipo === 'pacote'} />
             </div>
+            {tipo === 'pacote' && itemId && (() => {
+              const nSess = pacotes.find(p => p.id === itemId)?.num_sessoes || 1
+              return (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={pacoteRetroativo} onCheckedChange={setPacoteRetroativo} />
+                    <Label>Pacote já iniciado (registro retroativo)</Label>
+                  </div>
+                  {pacoteRetroativo && (
+                    <div className="space-y-1 rounded-lg bg-purple-50 border border-purple-200 p-3">
+                      <Label>Sessões já realizadas</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={nSess}
+                        value={sessoesJaRealizadas}
+                        onChange={e => setSessoesJaRealizadas(
+                          Math.max(1, Math.min(nSess, Number(e.target.value) || 1)),
+                        )}
+                      />
+                      <p className="text-xs text-purple-700">
+                        As {sessoesJaRealizadas} primeiras ficam marcadas como realizadas.
+                        As {Math.max(0, nSess - sessoesJaRealizadas)} restantes ficam pendentes para agendar.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
             <div className="flex items-center gap-2">
               <Switch checked={comDesconto} onCheckedChange={setComDesconto} />
               <Label>Aplicar desconto</Label>
