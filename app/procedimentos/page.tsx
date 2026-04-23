@@ -50,6 +50,9 @@ export default function ProcedimentosPage() {
   // Pacote retroativo: cliente já iniciou o pacote antes do sistema
   const [pacoteRetroativo, setPacoteRetroativo] = useState(false)
   const [sessoesJaRealizadas, setSessoesJaRealizadas] = useState(1)
+  // Retroativo: quando o pagamento do pacote já foi recebido antes do sistema,
+  // o procedimento entra como 'pago' sem gerar lançamento no financeiro
+  const [pagamentoJaRecebido, setPagamentoJaRecebido] = useState(true)
   // Busca estilo agenda: inputs com dropdown customizado para cliente e serviço/pacote
   const [buscaCliente, setBuscaCliente] = useState('')
   const [buscaItem, setBuscaItem] = useState('')
@@ -120,15 +123,20 @@ export default function ProcedimentosPage() {
     const descPct = comDesconto && descontoTipo === 'pct' ? descontoVal : 0
     const descValor = comDesconto && descontoTipo === 'valor' ? descontoVal : 0
 
+    // Em pacote retroativo com pagamento já recebido: entra como 'pago' sem gerar
+    // lançamento financeiro (receita já foi contabilizada fora do sistema)
+    const retroativoPago = pacoteRetroativo && tipo === 'pacote' && pagamentoJaRecebido
     const { error } = await supabase.from('procedimentos').insert({
       id: procId, numero,
       cliente_id: clienteId, cliente_nome: cliente?.nome || '',
       tipo, item_id: itemId, item_nome: itemNome,
       desconto_pct: descPct, desconto_valor: descValor,
       valor_original: valorOriginal, valor_final: valorFinal,
-      status_pagamento: 'pendente', forma_pagamento: formaPag,
+      status_pagamento: retroativoPago ? 'pago' : 'pendente',
+      forma_pagamento: formaPag,
       parcelas: formaPag === 'parcelado' ? parcelas : 1,
-      valor_pago: 0, observacoes: obs || null,
+      valor_pago: retroativoPago ? valorFinal : 0,
+      observacoes: obs || null,
       cancelado: false,
     })
     if (error) { toast.error('Erro ao salvar.'); setSalvando(false); return }
@@ -272,6 +280,7 @@ export default function ProcedimentosPage() {
     setDescontoVal(0); setFormaPag('pix'); setParcelas(1); setObs('')
     setTipo('servico')
     setPacoteRetroativo(false); setSessoesJaRealizadas(1)
+    setPagamentoJaRecebido(true)
     setBuscaCliente(''); setBuscaItem('')
     setClienteDropAberto(false); setItemDropAberto(false)
   }
@@ -442,21 +451,38 @@ export default function ProcedimentosPage() {
                     <Label>Pacote já iniciado (registro retroativo)</Label>
                   </div>
                   {pacoteRetroativo && (
-                    <div className="space-y-1 rounded-lg bg-purple-50 border border-purple-200 p-3">
-                      <Label>Sessões já realizadas</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={nSess}
-                        value={sessoesJaRealizadas}
-                        onChange={e => setSessoesJaRealizadas(
-                          Math.max(1, Math.min(nSess, Number(e.target.value) || 1)),
-                        )}
-                      />
-                      <p className="text-xs text-purple-700">
-                        As {sessoesJaRealizadas} primeiras ficam marcadas como realizadas.
-                        As {Math.max(0, nSess - sessoesJaRealizadas)} restantes ficam pendentes para agendar.
-                      </p>
+                    <div className="space-y-3 rounded-lg bg-purple-50 border border-purple-200 p-3">
+                      <div className="space-y-1">
+                        <Label>Sessões já realizadas</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={nSess}
+                          value={sessoesJaRealizadas}
+                          onChange={e => setSessoesJaRealizadas(
+                            Math.max(1, Math.min(nSess, Number(e.target.value) || 1)),
+                          )}
+                        />
+                        <p className="text-xs text-purple-700">
+                          As {sessoesJaRealizadas} primeiras ficam marcadas como realizadas.
+                          As {Math.max(0, nSess - sessoesJaRealizadas)} restantes ficam pendentes para agendar.
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2 border-t border-purple-200 pt-3">
+                        <Switch
+                          checked={pagamentoJaRecebido}
+                          onCheckedChange={setPagamentoJaRecebido}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <Label className="cursor-pointer">Pagamento já recebido</Label>
+                          <p className="text-xs text-purple-700 mt-0.5">
+                            {pagamentoJaRecebido
+                              ? 'Pacote entra como pago. Nenhum lançamento é gerado no financeiro.'
+                              : 'Pacote entra como pendente. Você pode marcar como pago depois em /procedimentos.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
