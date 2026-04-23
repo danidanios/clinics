@@ -344,10 +344,10 @@ export default function ProcedimentosPage() {
                 <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="flex rounded-lg border bg-gray-50 p-0.5">
+            <div className="flex rounded-lg border bg-gray-50 p-1">
               {(['servico', 'pacote'] as const).map(t => (
                 <button key={t} onClick={() => { setTipo(t); setItemId(''); setValorOriginal(0) }}
-                  className={`flex-1 rounded-md py-1 text-xs font-medium transition-colors ${tipo === t ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500'}`}>
+                  className={`flex-1 rounded-md py-2 px-3 text-sm font-medium transition-colors ${tipo === t ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500'}`}>
                   {t === 'servico' ? 'Serviço' : 'Pacote'}
                 </button>
               ))}
