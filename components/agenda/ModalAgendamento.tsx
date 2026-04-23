@@ -757,10 +757,10 @@ function FormAgendamento(p: FormAgendamentoProps) {
 
       {/* Toggle Serviço / Pacote — oculto ao agendar sessão pendente de pacote */}
       {!p.ehSessaoPendente && (
-        <div className="flex rounded-lg border bg-gray-50 p-0.5 gap-0.5">
+        <div className="flex rounded-lg border bg-gray-50 p-1 gap-1">
           {(['servico', 'pacote'] as const).map((t) => (
             <button key={t} onClick={() => p.setTipoItem(t)}
-              className={cn('flex-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+              className={cn('flex-1 rounded-md py-2 px-3 text-sm font-medium transition-colors',
                 p.tipoItem === t ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500')}>
               {t === 'servico' ? 'Serviço' : 'Pacote'}
             </button>

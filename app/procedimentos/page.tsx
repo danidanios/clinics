@@ -50,6 +50,11 @@ export default function ProcedimentosPage() {
   // Pacote retroativo: cliente já iniciou o pacote antes do sistema
   const [pacoteRetroativo, setPacoteRetroativo] = useState(false)
   const [sessoesJaRealizadas, setSessoesJaRealizadas] = useState(1)
+  // Busca estilo agenda: inputs com dropdown customizado para cliente e serviço/pacote
+  const [buscaCliente, setBuscaCliente] = useState('')
+  const [buscaItem, setBuscaItem] = useState('')
+  const [clienteDropAberto, setClienteDropAberto] = useState(false)
+  const [itemDropAberto, setItemDropAberto] = useState(false)
 
   const carregar = useCallback(async () => {
     // Filtra procedimentos não cancelados
@@ -267,6 +272,8 @@ export default function ProcedimentosPage() {
     setDescontoVal(0); setFormaPag('pix'); setParcelas(1); setObs('')
     setTipo('servico')
     setPacoteRetroativo(false); setSessoesJaRealizadas(1)
+    setBuscaCliente(''); setBuscaItem('')
+    setClienteDropAberto(false); setItemDropAberto(false)
   }
 
   const filtrados = procedimentos.filter(p =>
@@ -330,46 +337,97 @@ export default function ProcedimentosPage() {
 
       {/* Modal novo procedimento */}
       <Dialog open={modalAberto} onOpenChange={v => { if (!v) resetForm(); setModalAberto(v) }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-md">
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-lg">
           <DialogHeader><DialogTitle>Novo procedimento</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* Cliente — busca com dropdown */}
             <div className="space-y-1">
               <Label>Cliente</Label>
-              <Select value={clienteId} onValueChange={v => setClienteId(v ?? "")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione...">
-                    {clientes.find(c => c.id === clienteId)?.nome}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>{clientes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="relative">
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={buscaCliente}
+                  onChange={e => { setBuscaCliente(e.target.value); setClienteId(''); setClienteDropAberto(true) }}
+                  onFocus={() => setClienteDropAberto(true)}
+                  onBlur={() => setTimeout(() => setClienteDropAberto(false), 150)}
+                />
+                {clienteDropAberto && (() => {
+                  const termo = buscaCliente.toLowerCase()
+                  const lista = clientes
+                    .filter(c => !termo || (c.nome || '').toLowerCase().includes(termo))
+                    .slice(0, 20)
+                  if (lista.length === 0) return null
+                  return (
+                    <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200">
+                      {lista.map(c => (
+                        <button
+                          key={c.id}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                          onMouseDown={() => { setClienteId(c.id); setBuscaCliente(c.nome); setClienteDropAberto(false) }}
+                        >
+                          {c.nome}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
             </div>
+
             <div className="flex rounded-lg border bg-gray-50 p-1">
               {(['servico', 'pacote'] as const).map(t => (
-                <button key={t} onClick={() => { setTipo(t); setItemId(''); setValorOriginal(0) }}
+                <button key={t} onClick={() => { setTipo(t); setItemId(''); setValorOriginal(0); setBuscaItem('') }}
                   className={`flex-1 rounded-md py-2 px-3 text-sm font-medium transition-colors ${tipo === t ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500'}`}>
                   {t === 'servico' ? 'Serviço' : 'Pacote'}
                 </button>
               ))}
             </div>
+
+            {/* Item — busca com dropdown */}
             <div className="space-y-1">
               <Label>{tipo === 'servico' ? 'Serviço' : 'Pacote'}</Label>
-              <Select value={itemId} onValueChange={v => selecionarItem(v ?? '')}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione...">
+              <div className="relative">
+                <Input
+                  placeholder={`Buscar ${tipo === 'servico' ? 'serviço' : 'pacote'}...`}
+                  value={buscaItem}
+                  onChange={e => { setBuscaItem(e.target.value); setItemId(''); setItemDropAberto(true) }}
+                  onFocus={() => setItemDropAberto(true)}
+                  onBlur={() => setTimeout(() => setItemDropAberto(false), 150)}
+                />
+                {itemDropAberto && (
+                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200">
                     {tipo === 'servico'
-                      ? servicos.find(s => s.id === itemId)?.nome
-                      : (() => { const p = pacotes.find(p => p.id === itemId); return p ? `${p.nome} · ${p.num_sessoes} sessões · ${formatarMoeda(p.preco_total)}` : undefined })()
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {tipo === 'servico'
-                    ? servicos.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)
-                    : pacotes.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} · {p.num_sessoes} sessões · {formatarMoeda(p.preco_total)}</SelectItem>)
-                  }
-                </SelectContent>
-              </Select>
+                      ? servicos
+                          .filter(s => !buscaItem || (s.nome || '').toLowerCase().includes(buscaItem.toLowerCase()))
+                          .slice(0, 30)
+                          .map(s => (
+                            <button
+                              key={s.id}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                              onMouseDown={() => { selecionarItem(s.id); setBuscaItem(s.nome); setItemDropAberto(false) }}
+                            >
+                              {s.nome}
+                            </button>
+                          ))
+                      : pacotes
+                          .filter(pac => !buscaItem || (pac.nome || '').toLowerCase().includes(buscaItem.toLowerCase()))
+                          .slice(0, 30)
+                          .map(pac => (
+                            <button
+                              key={pac.id}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors"
+                              onMouseDown={() => {
+                                selecionarItem(pac.id)
+                                setBuscaItem(`${pac.nome} · ${pac.num_sessoes} sessões · ${formatarMoeda(pac.preco_total)}`)
+                                setItemDropAberto(false)
+                              }}
+                            >
+                              {pac.nome} · {pac.num_sessoes} sessões · {formatarMoeda(pac.preco_total)}
+                            </button>
+                          ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Valor</Label>
