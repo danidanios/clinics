@@ -15,7 +15,7 @@ import { AvatarInitiais } from '@/components/shared/AvatarInitiais'
 import { supabase, Funcionaria, Servico, Pacote, ServFuncionaria, Comissao, Sessao } from '@/lib/supabase'
 import { formatarMoeda, formatarData, gerarId, hoje } from '@/lib/utils'
 import { toast } from 'sonner'
-import { ArrowLeft, Check } from 'lucide-react'
+import { ArrowLeft, Check, X } from 'lucide-react'
 
 export default function PerfilFuncionariaPage() {
   const { id } = useParams<{ id: string }>()
@@ -109,6 +109,12 @@ export default function PerfilFuncionariaPage() {
   async function marcarPago(c: Comissao) {
     await supabase.from('comissoes').update({ status: 'pago', data_pagamento: hoje() }).eq('id', c.id)
     toast.success('Comissão marcada como paga.')
+    carregarComissoes()
+  }
+
+  async function cancelarComissao(c: Comissao) {
+    await supabase.from('comissoes').update({ status: 'cancelada' }).eq('id', c.id)
+    toast.success('Comissão cancelada.')
     carregarComissoes()
   }
 
@@ -347,10 +353,16 @@ export default function PerfilFuncionariaPage() {
                           </td>
                           <td className="py-1 text-right">
                             {c.status === 'a_pagar' && (
-                              <button onClick={() => marcarPago(c)}
-                                className="flex items-center gap-0.5 text-green-600 hover:underline text-[10px] whitespace-nowrap">
-                                <Check size={10} />✓ Pago
-                              </button>
+                              <div className="flex flex-col items-end gap-0.5">
+                                <button onClick={() => marcarPago(c)}
+                                  className="flex items-center gap-0.5 text-green-600 hover:underline text-[10px] whitespace-nowrap">
+                                  <Check size={10} />Pago
+                                </button>
+                                <button onClick={() => cancelarComissao(c)}
+                                  className="flex items-center gap-0.5 text-red-400 hover:underline text-[10px] whitespace-nowrap">
+                                  <X size={10} />Cancelar
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>

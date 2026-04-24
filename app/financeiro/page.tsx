@@ -18,7 +18,7 @@ import { toast } from 'sonner'
 import { Trash2, Download } from 'lucide-react'
 
 type Tipo = 'entrada' | 'saida'
-type Conta = 'cnpj' | 'pessoal' | 'dinheiro'
+type Conta = 'cnpj' | 'pessoal' | 'caixa'
 type Periodo = 'hoje' | 'semana' | 'mes' | 'personalizado'
 
 const CATS_ENTRADA = ['Serviços prestados', 'Outros recebimentos']
@@ -56,6 +56,7 @@ export default function FinanceiroPage() {
   const [descricao, setDescricao] = useState('')
   const [categoria, setCategoria] = useState('')
   const [conta, setConta] = useState<Conta>('cnpj')
+  const [formaPag, setFormaPag] = useState('')
   const [valor, setValor] = useState(0)
   const [funcId, setFuncId] = useState('')
   const [observacao, setObservacao] = useState('')
@@ -86,15 +87,16 @@ export default function FinanceiroPage() {
   async function salvar() {
     if (!descricao.trim()) { toast.error('Informe a descrição.'); return }
     if (valor <= 0) { toast.error('Informe um valor válido.'); return }
+    if (!formaPag) { toast.error('Informe a forma de pagamento.'); return }
     setSalvando(true)
     const func = funcionarias.find(f => f.id === funcId)
     const { error } = await supabase.from('lancamentos').insert({
-      id: gerarId(), data, tipo, descricao: descricao.trim(), categoria, conta, valor,
+      id: gerarId(), data, tipo, descricao: descricao.trim(), categoria, conta, forma_pagamento: formaPag, valor,
       funcionaria_id: funcId || null, funcionaria_nome: func?.nome || null, observacao: observacao || null,
     })
     if (error) { toast.error('Erro ao salvar lançamento.'); setSalvando(false); return }
     toast.success('Lançamento salvo!')
-    setDescricao(''); setCategoria(''); setValor(0); setObservacao(''); setFuncId('')
+    setDescricao(''); setCategoria(''); setFormaPag(''); setValor(0); setObservacao(''); setFuncId('')
     setSalvando(false)
     carregar()
   }
@@ -108,9 +110,9 @@ export default function FinanceiroPage() {
   }
 
   function exportarCSV() {
-    const cabecalho = 'Data,Descrição,Categoria,Conta,Tipo,Valor\n'
+    const cabecalho = 'Data,Descrição,Categoria,Conta,Forma Pagamento,Tipo,Valor\n'
     const linhas = lancamentos.map(l =>
-      `${formatarData(l.data)},"${l.descricao}","${l.categoria || ''}","${l.conta || ''}","${l.tipo}","${l.valor}"`
+      `${formatarData(l.data)},"${l.descricao}","${l.categoria || ''}","${l.conta || ''}","${l.forma_pagamento || ''}","${l.tipo}","${l.valor}"`
     ).join('\n')
     const blob = new Blob([cabecalho + linhas], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -178,13 +180,25 @@ export default function FinanceiroPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Conta</Label>
+              <Label>Conta *</Label>
               <Select value={conta} onValueChange={v => setConta(v as Conta)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cnpj">CNPJ</SelectItem>
                   <SelectItem value="pessoal">Pessoal</SelectItem>
-                  <SelectItem value="dinheiro">Dinheiro físico</SelectItem>
+                  <SelectItem value="caixa">Caixa (Dinheiro)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Forma de pagamento *</Label>
+              <Select value={formaPag} onValueChange={v => setFormaPag(v ?? '')}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="credito">Cartão de crédito</SelectItem>
+                  <SelectItem value="debito">Cartão de débito</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -245,7 +259,7 @@ export default function FinanceiroPage() {
                   <SelectItem value="">Todas</SelectItem>
                   <SelectItem value="cnpj">CNPJ</SelectItem>
                   <SelectItem value="pessoal">Pessoal</SelectItem>
-                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="caixa">Caixa</SelectItem>
                 </SelectContent>
               </Select>
               <Button size="sm" variant="outline" onClick={exportarCSV}>

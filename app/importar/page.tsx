@@ -20,7 +20,7 @@ type MapaColunas = {
   descricao: string
   tipo: string
   tipoFixo: 'entrada' | 'saida' | ''
-  conta: 'cnpj' | 'pessoal' | 'dinheiro'
+  conta: 'cnpj' | 'pessoal' | 'caixa'
   categoria: string
 }
 
@@ -185,12 +185,12 @@ export default function ImportarPage() {
 
             <div className="space-y-1">
               <Label>Conta padrão</Label>
-              <Select value={mapa.conta} onValueChange={v => setMapa({ ...mapa, conta: v as 'cnpj' | 'pessoal' | 'dinheiro' })}>
+              <Select value={mapa.conta} onValueChange={v => setMapa({ ...mapa, conta: v as 'cnpj' | 'pessoal' | 'caixa' })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cnpj">CNPJ</SelectItem>
                   <SelectItem value="pessoal">Pessoal</SelectItem>
-                  <SelectItem value="dinheiro">Dinheiro físico</SelectItem>
+                  <SelectItem value="caixa">Caixa (Dinheiro)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

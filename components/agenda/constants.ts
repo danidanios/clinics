@@ -1,11 +1,18 @@
-// Altura em pixels por hora na grade de horários (cada slot de 30min = 48px)
-export const ALTURA_HORA = 96
+// Hora de início e fim da grade visível
+export const HORA_INICIO = 8
+export const HORA_FIM = 23
+
+// Altura em pixels por hora na grade de horários (cada slot de 30min = 56px)
+export const ALTURA_HORA = 112
 
 // Altura em pixels por slot de 30 minutos
 export const ALTURA_SLOT = ALTURA_HORA / 2
 
-// Altura total da grade (24 horas)
-export const ALTURA_GRADE = 24 * ALTURA_HORA
+// Número de slots de 30min na grade
+export const NUM_SLOTS = (HORA_FIM - HORA_INICIO) * 2
+
+// Altura total da grade (8h às 23h = 15 horas)
+export const ALTURA_GRADE = (HORA_FIM - HORA_INICIO) * ALTURA_HORA
 
 // Cores atribuídas às funcionárias por índice de criação
 export const CORES_FUNCIONARIA = [
@@ -23,15 +30,15 @@ export function corFuncionaria(indice: number): string {
   return CORES_FUNCIONARIA[indice % CORES_FUNCIONARIA.length]
 }
 
-// Converte "HH:MM" para posição em pixels na grade
+// Converte "HH:MM" para posição em pixels na grade (relativo a HORA_INICIO)
 export function horaToPx(hora: string): number {
   const [h, m] = hora.split(':').map(Number)
-  return (h * 60 + m) * ALTURA_HORA / 60
+  return Math.max(0, ((h - HORA_INICIO) * 60 + m) * ALTURA_HORA / 60)
 }
 
-// Converte índice de slot (0..47) para string "HH:MM"
+// Converte índice de slot (0..NUM_SLOTS-1) para string "HH:MM" (começa em HORA_INICIO)
 export function slotParaHora(slot: number): string {
-  const h = Math.floor(slot / 2)
+  const h = Math.floor(slot / 2) + HORA_INICIO
   const m = slot % 2 === 0 ? '00' : '30'
   return `${String(h).padStart(2, '0')}:${m}`
 }

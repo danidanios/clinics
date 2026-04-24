@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useOutsideClick } from '@/hooks/useOutsideClick'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,6 +69,7 @@ export function ModalAgendamento({
   const [descontoTipo, setDescontoTipo] = useState<'pct' | 'valor'>('pct')
   const [descontoValor, setDescontoValor] = useState(0)
   const [formaPag, setFormaPag] = useState('')
+  const [contaPag, setContaPag] = useState<'cnpj' | 'pessoal' | 'caixa'>('cnpj')
   const [parcelas, setParcelas] = useState(1)
   const [statusPag, setStatusPag] = useState('pendente')
   const [comissaoPct, setComissaoPct] = useState(0)
@@ -312,6 +314,7 @@ export function ModalAgendamento({
 
   async function excluirSessao() {
     if (!sessao) return
+    await supabase.from('comissoes').update({ status: 'cancelada' }).eq('sessao_id', sessao.id)
     await supabase.from('sessoes').delete().eq('id', sessao.id)
     toast.success('Excluído.')
     onFechar(); onSalvo()
@@ -378,7 +381,7 @@ export function ModalAgendamento({
             id: gerarId(), data: hoje(), tipo: 'entrada',
             descricao: `Procedimento #${sessao.procedimento_numero} — ${sessao.item_nome} — ${sessao.cliente_nome}`,
             valor: valorProcedimento || valorFinal || sessao.valor_servico,
-            conta: 'cnpj', categoria: 'Procedimento',
+            conta: contaPag, forma_pagamento: formaPag || null, categoria: 'Procedimento',
             procedimento_id: sessao.procedimento_id, cancelado: false,
           })
           toast.success('Pagamento registrado e lançamento financeiro gerado!')
@@ -427,7 +430,8 @@ export function ModalAgendamento({
         tipo: 'entrada',
         descricao: `Procedimento #${numProc} — ${itemNome} — ${cliente?.nome || ''}`,
         valor: valorFinal,
-        conta: 'cnpj',
+        conta: contaPag,
+        forma_pagamento: formaPag || null,
         categoria: 'Procedimento',
         procedimento_id: idProc,
         cancelado: false,
@@ -566,6 +570,8 @@ export function ModalAgendamento({
             valorFinal={valorFinal}
             formaPag={formaPag}
             setFormaPag={setFormaPag}
+            contaPag={contaPag}
+            setContaPag={setContaPag}
             parcelas={parcelas}
             setParcelas={setParcelas}
             statusPag={statusPag}
@@ -693,6 +699,8 @@ type FormAgendamentoProps = {
   valorFinal: number
   formaPag: string
   setFormaPag: (v: string) => void
+  contaPag: 'cnpj' | 'pessoal' | 'caixa'
+  setContaPag: (v: 'cnpj' | 'pessoal' | 'caixa') => void
   parcelas: number
   setParcelas: (v: number) => void
   statusPag: string
@@ -718,6 +726,11 @@ function FormAgendamento(p: FormAgendamentoProps) {
   const [clienteDropAberto, setClienteDropAberto] = useState(false)
   const [buscaItem, setBuscaItem] = useState('')
   const [itemDropAberto, setItemDropAberto] = useState(false)
+  const clienteWrapRef = useRef<HTMLDivElement>(null)
+  const itemWrapRef = useRef<HTMLDivElement>(null)
+
+  useOutsideClick(clienteWrapRef, clienteDropAberto, () => setClienteDropAberto(false))
+  useOutsideClick(itemWrapRef, itemDropAberto, () => setItemDropAberto(false))
 
   useEffect(() => { setBuscaItem('') }, [p.tipoItem])
 
@@ -730,17 +743,19 @@ function FormAgendamento(p: FormAgendamentoProps) {
       {/* Cliente */}
       <div className="space-y-1">
         <Label>Cliente</Label>
-        <div className="relative">
+        <div className="relative" ref={clienteWrapRef}>
           <Input
             placeholder="Buscar cliente..."
             value={p.buscaCliente}
             disabled={p.ehSessaoPendente}
             onChange={(e) => { p.setBuscaCliente(e.target.value); p.setClienteId(''); setClienteDropAberto(true) }}
             onFocus={() => setClienteDropAberto(true)}
-            onBlur={() => setTimeout(() => setClienteDropAberto(false), 150)}
           />
           {clienteDropAberto && p.clientesFiltrados.length > 0 && (
-            <div className="absolute z-50 w-full mt-1 max-h-40 overflow-y-auto rounded-lg border bg-white shadow-md">
+            <div
+              className="absolute z-50 w-full mt-1 max-h-40 overflow-y-auto rounded-lg border bg-white shadow-md"
+              style={{ scrollbarGutter: 'stable' }}
+            >
               {p.clientesFiltrados.slice(0, 20).map((c) => (
                 <button
                   key={c.id}
@@ -772,16 +787,18 @@ function FormAgendamento(p: FormAgendamentoProps) {
       {!p.ehSessaoPendente && (
         <div className="space-y-1">
           <Label>{p.tipoItem === 'servico' ? 'Serviço' : 'Pacote'}</Label>
-          <div className="relative">
+          <div className="relative" ref={itemWrapRef}>
             <Input
               placeholder={`Buscar ${p.tipoItem === 'servico' ? 'serviço' : 'pacote'}...`}
               value={buscaItem}
               onChange={(e) => { setBuscaItem(e.target.value); p.setItemId(''); setItemDropAberto(true) }}
               onFocus={() => setItemDropAberto(true)}
-              onBlur={() => setTimeout(() => setItemDropAberto(false), 150)}
             />
             {itemDropAberto && (
-              <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md">
+              <div
+                className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md"
+                style={{ scrollbarGutter: 'stable' }}
+              >
                 {p.tipoItem === 'servico'
                   ? p.servicos
                       .filter((s) => !buscaItem || s.nome.toLowerCase().includes(buscaItem.toLowerCase()))
@@ -908,21 +925,26 @@ function FormAgendamento(p: FormAgendamentoProps) {
             <Select value={p.formaPag} onValueChange={(v) => p.setFormaPag(v ?? '')}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="pix">Pix</SelectItem>
                 <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                <SelectItem value="debito">Débito</SelectItem>
-                <SelectItem value="credito">Crédito</SelectItem>
-                <SelectItem value="parcelado">Parcelado</SelectItem>
+                <SelectItem value="pix">PIX</SelectItem>
+                <SelectItem value="credito">Cartão de crédito</SelectItem>
+                <SelectItem value="debito">Cartão de débito</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {p.formaPag === 'parcelado' && (
-            <div className="space-y-1">
-              <Label>Parcelas</Label>
-              <Input type="number" min={2} max={24} value={p.parcelas} onChange={(e) => p.setParcelas(Number(e.target.value))} />
-            </div>
-          )}
+          {/* Conta de destino */}
+          <div className="space-y-1">
+            <Label>Conta de destino</Label>
+            <Select value={p.contaPag} onValueChange={(v) => p.setContaPag(v as 'cnpj' | 'pessoal' | 'caixa')}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cnpj">CNPJ</SelectItem>
+                <SelectItem value="pessoal">Pessoal</SelectItem>
+                <SelectItem value="caixa">Caixa (Dinheiro)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Status de pagamento */}
           <div className="space-y-1">

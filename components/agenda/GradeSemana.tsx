@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import { Sessao, Funcionaria } from '@/lib/supabase'
 import { CardSessao } from './CardSessao'
 import { LinhaHoraAtual } from './LinhaHoraAtual'
-import { ALTURA_HORA, ALTURA_GRADE, ALTURA_SLOT, slotParaHora, corFuncionaria } from './constants'
+import { ALTURA_HORA, ALTURA_GRADE, ALTURA_SLOT, NUM_SLOTS, HORA_INICIO, slotParaHora, corFuncionaria } from './constants'
 import { hoje } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +33,6 @@ function inicioSemana(data: string): string {
 }
 
 const DIAS_ABREV = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const HORAS = Array.from({ length: 24 }, (_, i) => i)
 
 // Grade da view Semana: uma coluna por dia, sem divisão por funcionária
 export function GradeSemana({
@@ -92,21 +91,17 @@ export function GradeSemana({
       {/* Corpo com scroll */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="relative flex" style={{ height: ALTURA_GRADE }}>
-          {/* Coluna de horários — label a cada 30 minutos */}
+          {/* Coluna de horários — label centralizado dentro de cada slot */}
           <div className="w-12 flex-shrink-0 relative">
-            {Array.from({ length: 48 }, (_, i) => {
-              if (i === 0) return null
-              const h = Math.floor(i / 2)
+            {Array.from({ length: NUM_SLOTS }, (_, i) => {
               const meia = i % 2 !== 0
               return (
                 <div
                   key={i}
-                  className={`absolute right-2 select-none ${meia ? 'text-[9px] text-gray-500' : 'text-[10px] text-gray-700'}`}
-                  style={{ top: i * ALTURA_SLOT - 7 }}
+                  className={`absolute right-2 select-none ${meia ? 'text-[11px] text-gray-400' : 'text-[11px] text-gray-600'}`}
+                  style={{ top: i * ALTURA_SLOT + ALTURA_SLOT / 2, transform: 'translateY(-50%)' }}
                 >
-                  {meia
-                    ? `${String(h).padStart(2, '0')}:30`
-                    : `${String(h).padStart(2, '0')}:00`}
+                  {slotParaHora(i)}
                 </div>
               )
             })}
@@ -119,7 +114,7 @@ export function GradeSemana({
             return (
               <div key={d} className="flex-1 border-l relative">
                 {/* Linhas de grade */}
-                {Array.from({ length: 48 }, (_, i) => (
+                {Array.from({ length: NUM_SLOTS }, (_, i) => (
                   <div
                     key={i}
                     className={
@@ -132,10 +127,10 @@ export function GradeSemana({
                 ))}
 
                 {/* Áreas clicáveis */}
-                {Array.from({ length: 48 }, (_, i) => (
+                {Array.from({ length: NUM_SLOTS }, (_, i) => (
                   <div
                     key={`slot-${i}`}
-                    className="absolute inset-x-0 cursor-pointer hover:bg-purple-50/50"
+                    className="absolute inset-x-0 cursor-pointer hover:bg-purple-100/60 transition-colors"
                     style={{ top: i * ALTURA_SLOT, height: ALTURA_SLOT }}
                     onClick={() => onSlotClick(d, slotParaHora(i))}
                   />

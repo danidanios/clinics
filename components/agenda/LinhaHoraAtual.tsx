@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ALTURA_HORA } from './constants'
+import { ALTURA_HORA, HORA_INICIO } from './constants'
 
 // Linha vermelha que indica o horário atual na grade
 export function LinhaHoraAtual() {
@@ -11,7 +11,7 @@ export function LinhaHoraAtual() {
     const agora = new Date()
     const h = agora.getHours()
     const m = agora.getMinutes()
-    return (h * 60 + m) * ALTURA_HORA / 60
+    return Math.max(0, ((h - HORA_INICIO) * 60 + m) * ALTURA_HORA / 60)
   }
 
   useEffect(() => {

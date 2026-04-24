@@ -72,7 +72,10 @@ export function PainelSessoesPendentes({ aberto, onFechar, onAgendar, versao, on
     setGrupos(Array.from(mapa.values()))
   }
 
+  // Carrega (e mantém count do botão) no mount e após cada sessão salva
   useEffect(() => { carregar() }, [versao])
+  // Atualiza ao abrir o painel — captura pacotes criados em outras páginas
+  useEffect(() => { if (aberto) carregar() }, [aberto])
 
   // Filtra grupos pela busca (cliente_nome, item_nome ou procedimento_numero)
   const gruposFiltrados = useMemo(() => {

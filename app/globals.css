@@ -128,4 +128,8 @@
   html {
     @apply font-sans;
   }
+  [data-slot="select-content"],
+  [data-slot="dropdown-menu-content"] {
+    scrollbar-gutter: stable;
+  }
 }

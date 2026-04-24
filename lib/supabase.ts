@@ -23,7 +23,7 @@ export type Lancamento = {
   descricao: string
   categoria?: string
   subcategoria?: string
-  conta?: 'cnpj' | 'pessoal' | 'dinheiro'
+  conta?: 'cnpj' | 'pessoal' | 'caixa'
   valor: number
   funcionaria_id?: string
   funcionaria_nome?: string

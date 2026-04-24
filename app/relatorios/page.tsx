@@ -75,9 +75,9 @@ function RelatorioFinanceiro() {
   function exportarCSV() {
     const { de, ate } = periodoRange(periodo, iniCustom, fimCustom)
     // BOM para Excel reconhecer UTF-8; separador ; padrão BR
-    const cabecalho = 'Data;Descrição;Categoria;Conta;Tipo;Valor\n'
+    const cabecalho = 'Data;Descrição;Categoria;Conta;Forma Pagamento;Tipo;Valor\n'
     const linhas = lancamentos.map(l =>
-      `${formatarData(l.data)};"${l.descricao}";"${l.categoria || ''}";"${l.conta || ''}";"${l.tipo === 'entrada' ? 'Entrada' : 'Saída'}";"${formatarMoeda(l.valor)}"`
+      `${formatarData(l.data)};"${l.descricao}";"${l.categoria || ''}";"${l.conta || ''}";"${l.forma_pagamento || ''}";"${l.tipo === 'entrada' ? 'Entrada' : 'Saída'}";"${formatarMoeda(l.valor)}"`
     ).join('\n')
     const bom = '\uFEFF'
     const blob = new Blob([bom + cabecalho + linhas], { type: 'text/csv;charset=utf-8;' })
@@ -130,7 +130,7 @@ function RelatorioFinanceiro() {
               <SelectItem value="">Todas</SelectItem>
               <SelectItem value="cnpj">CNPJ</SelectItem>
               <SelectItem value="pessoal">Pessoal</SelectItem>
-              <SelectItem value="dinheiro">Dinheiro</SelectItem>
+              <SelectItem value="caixa">Caixa</SelectItem>
             </SelectContent>
           </Select>
           <Button size="sm" variant="outline" onClick={exportarCSV}><Download size={14} className="mr-1" />CSV</Button>
@@ -156,7 +156,7 @@ function RelatorioFinanceiro() {
           <CardContent>
             {Object.entries(porConta).map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm py-1">
-                <span className="capitalize">{k === 'cnpj' ? 'CNPJ' : k === 'pessoal' ? 'Pessoal' : 'Dinheiro'}</span>
+                <span className="capitalize">{k === 'cnpj' ? 'CNPJ' : k === 'pessoal' ? 'Pessoal' : 'Caixa (Dinheiro)'}</span>
                 <span className={v >= 0 ? 'text-green-600' : 'text-red-500'}>{formatarMoeda(v)}</span>
               </div>
             ))}

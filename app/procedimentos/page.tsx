@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useOutsideClick } from '@/hooks/useOutsideClick'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,7 @@ import { formatarMoeda, gerarId, formatarNumero, hoje } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Plus, Search, Edit2, XCircle } from 'lucide-react'
 
-type FormaPag = 'pix' | 'dinheiro' | 'debito' | 'credito' | 'parcelado'
+type FormaPag = 'pix' | 'dinheiro' | 'debito' | 'credito'
 
 export default function ProcedimentosPage() {
   const [procedimentos, setProcedimentos] = useState<Procedimento[]>([])
@@ -32,6 +33,7 @@ export default function ProcedimentosPage() {
   const [editProc, setEditProc] = useState<Procedimento | null>(null)
   // Guarda o status original ao abrir edição (para detectar mudança para 'pago')
   const [editProcStatusOriginal, setEditProcStatusOriginal] = useState<string>('')
+  const [editContaPag, setEditContaPag] = useState<'cnpj' | 'pessoal' | 'caixa'>('cnpj')
   const [cancelarProcId, setCancelarProcId] = useState<string | null>(null)
   const [salvando, setSalvando] = useState(false)
 
@@ -58,6 +60,11 @@ export default function ProcedimentosPage() {
   const [buscaItem, setBuscaItem] = useState('')
   const [clienteDropAberto, setClienteDropAberto] = useState(false)
   const [itemDropAberto, setItemDropAberto] = useState(false)
+  const clienteWrapRef = useRef<HTMLDivElement>(null)
+  const itemWrapRef = useRef<HTMLDivElement>(null)
+
+  useOutsideClick(clienteWrapRef, clienteDropAberto, () => setClienteDropAberto(false))
+  useOutsideClick(itemWrapRef, itemDropAberto, () => setItemDropAberto(false))
 
   const carregar = useCallback(async () => {
     // Filtra procedimentos não cancelados
@@ -134,7 +141,7 @@ export default function ProcedimentosPage() {
       valor_original: valorOriginal, valor_final: valorFinal,
       status_pagamento: retroativoPago ? 'pago' : 'pendente',
       forma_pagamento: formaPag,
-      parcelas: formaPag === 'parcelado' ? parcelas : 1,
+      parcelas: 1,
       valor_pago: retroativoPago ? valorFinal : 0,
       observacoes: obs || null,
       cancelado: false,
@@ -145,8 +152,8 @@ export default function ProcedimentosPage() {
     if (tipo === 'pacote') {
       const p = pacotes.find(p => p.id === itemId)
       const numSessoes = p?.num_sessoes || 1
-      const sessInserts = Array.from({ length: numSessoes }, (_, i) => ({
-        id: gerarId(),
+      const retroCount = pacoteRetroativo ? Math.min(sessoesJaRealizadas, numSessoes) : 0
+      const sessBase = {
         procedimento_id: procId,
         procedimento_numero: numero,
         cliente_id: clienteId,
@@ -155,15 +162,20 @@ export default function ProcedimentosPage() {
         valor_servico: valorFinal / numSessoes,
         data: null,
         hora: null,
-        // Pacote retroativo: primeiras X sessões ficam como realizadas (histórico),
-        // restantes ficam pendentes para serem agendadas normalmente
-        status: (pacoteRetroativo && i < sessoesJaRealizadas) ? 'realizada' : 'pendente',
         comissao_pct: 0,
         comissao_valor: 0,
         custo_produto: 0,
-        numero_sessao: i + 1,
         total_sessoes: numSessoes,
-      }))
+      }
+      // Retroativas numeradas 1..retroCount; pendentes numeradas (retroCount+1)..numSessoes
+      const sessInserts = [
+        ...Array.from({ length: retroCount }, (_, i) => ({
+          id: gerarId(), ...sessBase, status: 'realizada' as const, numero_sessao: i + 1,
+        })),
+        ...Array.from({ length: numSessoes - retroCount }, (_, i) => ({
+          id: gerarId(), ...sessBase, status: 'pendente' as const, numero_sessao: retroCount + i + 1,
+        })),
+      ]
       await supabase.from('sessoes').insert(sessInserts)
     } else {
       await supabase.from('sessoes').insert({
@@ -214,6 +226,9 @@ export default function ProcedimentosPage() {
     await supabase.from('lancamentos')
       .update({ cancelado: true })
       .eq('procedimento_id', cancelarProcId)
+    await supabase.from('comissoes')
+      .update({ status: 'cancelada' })
+      .eq('procedimento_id', cancelarProcId)
     if (sessaoIds.length > 0) {
       await supabase.from('comissoes')
         .update({ status: 'cancelada' })
@@ -252,7 +267,8 @@ export default function ProcedimentosPage() {
         tipo: 'entrada',
         descricao: `Procedimento #${editProc.numero} — ${editProc.item_nome} — ${editProc.cliente_nome}`,
         valor: editProc.valor_final,
-        conta: 'cnpj',
+        conta: editContaPag,
+        forma_pagamento: editProc.forma_pagamento || null,
         categoria: 'Procedimento',
         procedimento_id: editProc.id,
         cancelado: false,
@@ -352,13 +368,12 @@ export default function ProcedimentosPage() {
             {/* Cliente — busca com dropdown */}
             <div className="space-y-1">
               <Label>Cliente</Label>
-              <div className="relative">
+              <div className="relative" ref={clienteWrapRef}>
                 <Input
                   placeholder="Buscar cliente..."
                   value={buscaCliente}
                   onChange={e => { setBuscaCliente(e.target.value); setClienteId(''); setClienteDropAberto(true) }}
                   onFocus={() => setClienteDropAberto(true)}
-                  onBlur={() => setTimeout(() => setClienteDropAberto(false), 150)}
                 />
                 {clienteDropAberto && (() => {
                   const termo = buscaCliente.toLowerCase()
@@ -367,7 +382,10 @@ export default function ProcedimentosPage() {
                     .slice(0, 20)
                   if (lista.length === 0) return null
                   return (
-                    <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200">
+                    <div
+                      className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200"
+                      style={{ scrollbarGutter: 'stable' }}
+                    >
                       {lista.map(c => (
                         <button
                           key={c.id}
@@ -395,16 +413,18 @@ export default function ProcedimentosPage() {
             {/* Item — busca com dropdown */}
             <div className="space-y-1">
               <Label>{tipo === 'servico' ? 'Serviço' : 'Pacote'}</Label>
-              <div className="relative">
+              <div className="relative" ref={itemWrapRef}>
                 <Input
                   placeholder={`Buscar ${tipo === 'servico' ? 'serviço' : 'pacote'}...`}
                   value={buscaItem}
                   onChange={e => { setBuscaItem(e.target.value); setItemId(''); setItemDropAberto(true) }}
                   onFocus={() => setItemDropAberto(true)}
-                  onBlur={() => setTimeout(() => setItemDropAberto(false), 150)}
                 />
                 {itemDropAberto && (
-                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200">
+                  <div
+                    className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-lg border bg-white shadow-md divide-y divide-gray-200"
+                    style={{ scrollbarGutter: 'stable' }}
+                  >
                     {tipo === 'servico'
                       ? servicos
                           .filter(s => !buscaItem || (s.nome || '').toLowerCase().includes(buscaItem.toLowerCase()))
@@ -518,16 +538,9 @@ export default function ProcedimentosPage() {
                   <SelectItem value="dinheiro">Dinheiro</SelectItem>
                   <SelectItem value="debito">Débito</SelectItem>
                   <SelectItem value="credito">Crédito</SelectItem>
-                  <SelectItem value="parcelado">Parcelado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {formaPag === 'parcelado' && (
-              <div className="space-y-1">
-                <Label>Nº de parcelas</Label>
-                <Input type="number" min={2} value={parcelas} onChange={e => setParcelas(+e.target.value)} />
-              </div>
-            )}
             <div className="space-y-1">
               <Label>Observações</Label>
               <Textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} />
@@ -565,9 +578,34 @@ export default function ProcedimentosPage() {
                 <Textarea value={editProc.observacoes || ''} onChange={e => setEditProc({ ...editProc, observacoes: e.target.value })} rows={2} />
               </div>
               {editProcStatusOriginal !== 'pago' && editProc.status_pagamento === 'pago' && (
-                <p className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
-                  Ao salvar, um lançamento financeiro será gerado automaticamente.
-                </p>
+                <>
+                  <div className="space-y-1">
+                    <Label>Forma de pagamento</Label>
+                    <Select value={editProc.forma_pagamento || ''} onValueChange={v => setEditProc({ ...editProc, forma_pagamento: v ?? undefined })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="credito">Cartão de crédito</SelectItem>
+                        <SelectItem value="debito">Cartão de débito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Conta de destino</Label>
+                    <Select value={editContaPag} onValueChange={v => setEditContaPag(v as 'cnpj' | 'pessoal' | 'caixa')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                        <SelectItem value="pessoal">Pessoal</SelectItem>
+                        <SelectItem value="caixa">Caixa (Dinheiro)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
+                    Ao salvar, um lançamento financeiro será gerado automaticamente.
+                  </p>
+                </>
               )}
               <Button className="w-full bg-purple-600 hover:bg-purple-700" onClick={salvarEdicao} disabled={salvando}>
                 {salvando ? 'Salvando...' : 'Salvar'}

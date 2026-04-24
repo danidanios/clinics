@@ -5,7 +5,7 @@ import { Sessao, Funcionaria } from '@/lib/supabase'
 import { AvatarInitiais } from '@/components/shared/AvatarInitiais'
 import { CardSessao } from './CardSessao'
 import { LinhaHoraAtual } from './LinhaHoraAtual'
-import { ALTURA_HORA, ALTURA_GRADE, ALTURA_SLOT, slotParaHora, corFuncionaria } from './constants'
+import { ALTURA_HORA, ALTURA_GRADE, ALTURA_SLOT, NUM_SLOTS, HORA_INICIO, HORA_FIM, slotParaHora, corFuncionaria } from './constants'
 import { hoje } from '@/lib/utils'
 
 type Props = {
@@ -17,7 +17,6 @@ type Props = {
   onSessaoClick: (sessao: Sessao) => void
 }
 
-const HORAS = Array.from({ length: 24 }, (_, i) => i)
 const eHoje = (data: string) => data === hoje()
 
 // Grade principal da view Dia com colunas separadas por funcionária
@@ -80,21 +79,17 @@ export function GradeDia({
           className="relative flex"
           style={{ height: ALTURA_GRADE, minWidth: `${48 + funcVisiveis.length * 140}px` }}
         >
-          {/* Coluna de horários — label a cada 30 minutos */}
+          {/* Coluna de horários — label centralizado dentro de cada slot */}
           <div className="w-12 flex-shrink-0 relative">
-            {Array.from({ length: 48 }, (_, i) => {
-              if (i === 0) return null
-              const h = Math.floor(i / 2)
+            {Array.from({ length: NUM_SLOTS }, (_, i) => {
               const meia = i % 2 !== 0
               return (
                 <div
                   key={i}
-                  className={`absolute right-2 select-none ${meia ? 'text-[9px] text-gray-500' : 'text-[10px] text-gray-700'}`}
-                  style={{ top: i * ALTURA_SLOT - 7 }}
+                  className={`absolute right-2 select-none ${meia ? 'text-[11px] text-gray-400' : 'text-[11px] text-gray-600'}`}
+                  style={{ top: i * ALTURA_SLOT + ALTURA_SLOT / 2, transform: 'translateY(-50%)' }}
                 >
-                  {meia
-                    ? `${String(h).padStart(2, '0')}:30`
-                    : `${String(h).padStart(2, '0')}:00`}
+                  {slotParaHora(i)}
                 </div>
               )
             })}
@@ -106,7 +101,7 @@ export function GradeDia({
             return (
               <div key={f.id} className="flex-1 min-w-[140px] border-l relative">
                 {/* Linhas de grade (hora cheia e meia hora) */}
-                {Array.from({ length: 48 }, (_, i) => (
+                {Array.from({ length: NUM_SLOTS }, (_, i) => (
                   <div
                     key={i}
                     className={
@@ -119,10 +114,10 @@ export function GradeDia({
                 ))}
 
                 {/* Áreas clicáveis para criar agendamento */}
-                {Array.from({ length: 48 }, (_, i) => (
+                {Array.from({ length: NUM_SLOTS }, (_, i) => (
                   <div
                     key={`slot-${i}`}
-                    className="absolute inset-x-0 cursor-pointer hover:bg-purple-50/50 transition-colors"
+                    className="absolute inset-x-0 cursor-pointer hover:bg-purple-100/60 transition-colors"
                     style={{ top: i * ALTURA_SLOT, height: ALTURA_SLOT }}
                     onClick={() => onSlotClick(data, slotParaHora(i), f.id)}
                   />
