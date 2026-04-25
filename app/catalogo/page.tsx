@@ -39,6 +39,7 @@ export default function CatalogoPage() {
   const [editPacote, setEditPacote] = useState<Pacote | null>(null)
   const [pnome, setPnome] = useState('')
   const [pSessoes, setPSessoes] = useState(1)
+  const [pDuracao, setPDuracao] = useState(30)
   const [pitens, setPitens] = useState<ItemPacote[]>([])
   const [pPreco, setPpreco] = useState(0)
   const [pObs, setPobs] = useState('')
@@ -108,11 +109,12 @@ export default function CatalogoPage() {
 
   // --- Pacotes ---
   function abrirNovoPacote() {
-    setEditPacote(null); setPnome(''); setPSessoes(1); setPitens([]); setPpreco(0); setPobs(''); setPServicoId('')
+    setEditPacote(null); setPnome(''); setPSessoes(1); setPDuracao(30); setPitens([]); setPpreco(0); setPobs(''); setPServicoId('')
     setModalPacote(true)
   }
   function abrirEditarPacote(p: Pacote) {
     setEditPacote(p); setPnome(p.nome); setPSessoes(p.num_sessoes)
+    setPDuracao(p.duracao_minutos ?? 30)
     setPitens(p.itens || []); setPpreco(p.preco_total); setPobs(p.observacao || '')
     setPServicoId(p.servico_id || '')
     setModalPacote(true)
@@ -128,7 +130,7 @@ export default function CatalogoPage() {
     if (!pnome.trim()) { toast.error('Informe o nome do pacote.'); return }
     setSalvando(true)
     const payload = {
-      nome: pnome, num_sessoes: pSessoes, itens: pitens,
+      nome: pnome, num_sessoes: pSessoes, duracao_minutos: pDuracao, itens: pitens,
       preco_total: pPreco, observacao: pObs,
       servico_id: pServicoId || null,
     }
@@ -207,7 +209,7 @@ export default function CatalogoPage() {
                   <div key={p.id} className="flex items-start justify-between py-2">
                     <div>
                       <p className="text-sm font-medium">{p.nome}</p>
-                      <p className="text-xs text-gray-400">{p.num_sessoes} sessões · {formatarMoeda(p.preco_total)}</p>
+                      <p className="text-xs text-gray-400">{p.num_sessoes} sessões{p.duracao_minutos ? ` · ${p.duracao_minutos} min/sessão` : ''} · {formatarMoeda(p.preco_total)}</p>
                       {p.servico_id && (
                         <p className="text-xs text-purple-600">
                           Serviço: {servicos.find(s => s.id === p.servico_id)?.nome || '—'}
@@ -287,6 +289,17 @@ export default function CatalogoPage() {
             <div className="space-y-1">
               <Label>Nº de sessões</Label>
               <Input type="number" min={1} value={pSessoes} onChange={e => setPSessoes(+e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Duração por sessão (minutos)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={pDuracao}
+                onChange={e => setPDuracao(+e.target.value)}
+                onFocus={e => e.target.select()}
+                placeholder="Ex: 60"
+              />
             </div>
             <div className="space-y-1">
               <Label>Serviço base (para custo do produto)</Label>

@@ -80,6 +80,7 @@ export function ModalAgendamento({
   const [realizado, setRealizado] = useState(false)
   const [numProc, setNumProc] = useState('')
   const [duracaoSessao, setDuracaoSessao] = useState(30)
+  const [pendentePacoteId, setPendentePacoteId] = useState<string | undefined>()
 
   // Campos de bloqueio
   const [bloqFuncId, setBloqFuncId] = useState('')
@@ -131,14 +132,29 @@ export function ModalAgendamento({
       setDescontoTipo('pct')
       setStatusPag('pendente')
       setStatusPagOriginal('pendente')
+      setComissaoLock(true)
+      setCustoLock(true)
+      setPendentePacoteId(undefined)
       if (sessao.procedimento_id) {
-        supabase.from('procedimentos').select('status_pagamento,valor_final')
+        supabase.from('procedimentos').select('status_pagamento,valor_final,item_id,tipo')
           .eq('id', sessao.procedimento_id).single()
           .then(({ data: proc }) => {
-            if (proc) {
-              setStatusPag(proc.status_pagamento)
-              setStatusPagOriginal(proc.status_pagamento)
-              setValorProcedimento(proc.valor_final || 0)
+            if (!proc) return
+            setStatusPag(proc.status_pagamento)
+            setStatusPagOriginal(proc.status_pagamento)
+            setValorProcedimento(proc.valor_final || 0)
+
+            if (sessao.status === 'pendente' && proc.tipo === 'pacote' && proc.item_id) {
+              const pac = pacotes.find((p) => p.id === proc.item_id)
+              if (pac) {
+                setPendentePacoteId(pac.id)
+                atualizarCamposSessaoPendente(
+                  sessao.funcionaria_id || '',
+                  pac.id,
+                  sessao.total_sessoes,
+                  sessao.hora || undefined,
+                )
+              }
             }
           })
       }
@@ -165,6 +181,7 @@ export function ModalAgendamento({
       setStatusPag('pendente')
       setComissaoLock(true)
       setCustoLock(true)
+      setPendentePacoteId(undefined)
       setLembResponsavelId('')
       buscarProxNumProc()
     }
@@ -221,9 +238,47 @@ export function ModalAgendamento({
       } else {
         setCustoProd(0)
       }
-      setDuracaoSessao(30)
-      // Duração padrão de 30 min para pacotes
-      setHoraFim(adicionarMinutos(inicio, 30))
+      const durPac = pac?.duracao_minutos && pac.duracao_minutos > 0 ? pac.duracao_minutos : 30
+      setDuracaoSessao(durPac)
+      setHoraFim(adicionarMinutos(inicio, durPac))
+    }
+  }
+
+  // Atualiza comissão, custo e duração ao agendar uma sessão pendente de pacote.
+  // horaInicioPendente: se a sessão já tiver hora gravada, calcula hora_fim imediatamente.
+  function atualizarCamposSessaoPendente(
+    fId: string,
+    pacId: string | undefined,
+    totalSessoes: number | undefined,
+    horaInicioPendente?: string,
+  ) {
+    if (!pacId) return
+    const pac = pacotes.find((p) => p.id === pacId)
+    if (!pac) return
+
+    // Comissão: verifica por pacote primeiro (item_tipo='pacote'), depois por serviço-base,
+    // depois fallback para o % default da funcionária
+    const sfPac = sfuncs.find(
+      (s) => s.funcionaria_id === fId && s.item_id === pacId && s.item_tipo === 'pacote',
+    )
+    const sfServ = pac.servico_id ? sfuncs.find(
+      (s) => s.funcionaria_id === fId && s.item_id === pac.servico_id && s.item_tipo === 'servico',
+    ) : undefined
+    const func = funcionarias.find((f) => f.id === fId)
+    setComissaoPct(sfPac?.comissao_pct ?? sfServ?.comissao_pct ?? func?.comissao_pct ?? 0)
+
+    // Duração: prefere duracao_minutos do próprio pacote; fallback para o serviço-base
+    const durPac = pac.duracao_minutos && pac.duracao_minutos > 0 ? pac.duracao_minutos : undefined
+    const servBase = pac.servico_id ? servicos.find((s) => s.id === pac.servico_id) : undefined
+    const durServ = servBase?.duracao_minutos && servBase.duracao_minutos > 0 ? servBase.duracao_minutos : undefined
+    const dur = durPac ?? durServ ?? 30
+    setDuracaoSessao(dur)
+    if (horaInicioPendente) setHoraFim(adicionarMinutos(horaInicioPendente, dur))
+
+    // Custo por sessão depende do serviço-base
+    if (servBase) {
+      const n = totalSessoes && totalSessoes > 0 ? totalSessoes : 1
+      setCustoProd((servBase.custo_geral ?? 0) / n)
     }
   }
 
@@ -550,7 +605,11 @@ export function ModalAgendamento({
             itemId={itemId}
             setItemId={(id) => { setItemId(id); atualizarCamposItem(id, tipoItem, funcId) }}
             funcId={funcId}
-            setFuncId={(id) => { setFuncId(id); if (itemId) atualizarCamposItem(itemId, tipoItem, id) }}
+            setFuncId={(id) => {
+              setFuncId(id)
+              if (itemId) atualizarCamposItem(itemId, tipoItem, id)
+              else if (pendentePacoteId) atualizarCamposSessaoPendente(id, pendentePacoteId, sessao?.total_sessoes)
+            }}
             status={status}
             setStatus={setStatus}
             data={data}

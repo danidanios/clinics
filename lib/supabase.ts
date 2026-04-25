@@ -53,6 +53,7 @@ export type Pacote = {
   num_sessoes: number
   itens: { descricao: string; quantidade: number; valor_unit: number }[]
   preco_total: number
+  duracao_minutos?: number
   servico_id?: string
   observacao?: string
   criado_em?: string
